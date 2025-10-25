@@ -1,4 +1,4 @@
-# Knative Labeler Controller
+# Knative OpenTelemetry (OTEL) Controller
 
 A Kubernetes operator built with Knative's controller framework that automatically applies custom labels to Deployments based on Custom Resource definitions.
 
@@ -66,7 +66,7 @@ kubectl get crd labelers.clusterops.io
 kubectl create namespace labeler
 ```
 
-### 3. Install RBAC Resources
+### 3. Install RBAC Resources and Deploy the Controller
 
 ```bash
 kubectl apply -f config/100-serviceaccount.yaml -n labeler
@@ -74,11 +74,9 @@ kubectl apply -f config/200-role.yaml
 kubectl apply -f config/201-rolebinding.yaml
 ```
 
-### 4. Deploy the Controller
-
 Using `ko`:
 ```bash
-ko resolve -f config/controller.yaml | kubectl apply -n labeler -f -
+ko resolve -Rf config/ | kubectl apply -n labeler -f -
 ```
 
 Or build and push manually:
