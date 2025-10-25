@@ -1,4 +1,4 @@
-module github.com/ab-ghosh/knative-controller
+module github.com/ab-ghosh/knative-otel-integrator
 
 go 1.25.1
 

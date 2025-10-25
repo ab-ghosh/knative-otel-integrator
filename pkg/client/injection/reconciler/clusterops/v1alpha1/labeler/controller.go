@@ -24,9 +24,9 @@ import (
 	reflect "reflect"
 	strings "strings"
 
-	versionedscheme "github.com/ab-ghosh/knative-controller/pkg/client/clientset/versioned/scheme"
-	client "github.com/ab-ghosh/knative-controller/pkg/client/injection/client"
-	labeler "github.com/ab-ghosh/knative-controller/pkg/client/injection/informers/clusterops/v1alpha1/labeler"
+	versionedscheme "github.com/ab-ghosh/knative-otel-integrator/pkg/client/clientset/versioned/scheme"
+	client "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/client"
+	labeler "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/informers/clusterops/v1alpha1/labeler"
 	zap "go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	labels "k8s.io/apimachinery/pkg/labels"

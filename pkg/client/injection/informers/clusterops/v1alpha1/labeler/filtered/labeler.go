@@ -21,8 +21,8 @@ package filtered
 import (
 	context "context"
 
-	v1alpha1 "github.com/ab-ghosh/knative-controller/pkg/client/informers/externalversions/clusterops/v1alpha1"
-	filtered "github.com/ab-ghosh/knative-controller/pkg/client/injection/informers/factory/filtered"
+	v1alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/client/informers/externalversions/clusterops/v1alpha1"
+	filtered "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/informers/factory/filtered"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
@@ -59,7 +59,7 @@ func Get(ctx context.Context, selector string) v1alpha1.LabelerInformer {
 	untyped := ctx.Value(Key{Selector: selector})
 	if untyped == nil {
 		logging.FromContext(ctx).Panicf(
-			"Unable to fetch github.com/ab-ghosh/knative-controller/pkg/client/informers/externalversions/clusterops/v1alpha1.LabelerInformer with selector %s from context.", selector)
+			"Unable to fetch github.com/ab-ghosh/knative-otel-integrator/pkg/client/informers/externalversions/clusterops/v1alpha1.LabelerInformer with selector %s from context.", selector)
 	}
 	return untyped.(v1alpha1.LabelerInformer)
 }

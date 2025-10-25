@@ -21,9 +21,9 @@ package fake
 import (
 	context "context"
 
-	externalversions "github.com/ab-ghosh/knative-controller/pkg/client/informers/externalversions"
-	fake "github.com/ab-ghosh/knative-controller/pkg/client/injection/client/fake"
-	factory "github.com/ab-ghosh/knative-controller/pkg/client/injection/informers/factory"
+	externalversions "github.com/ab-ghosh/knative-otel-integrator/pkg/client/informers/externalversions"
+	fake "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/client/fake"
+	factory "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/informers/factory"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 )

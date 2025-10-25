@@ -21,8 +21,8 @@ package v1alpha1
 import (
 	http "net/http"
 
-	clusteropsv1alpha1 "github.com/ab-ghosh/knative-controller/pkg/apis/clusterops/v1alpha1"
-	scheme "github.com/ab-ghosh/knative-controller/pkg/client/clientset/versioned/scheme"
+	clusteropsv1alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/apis/clusterops/v1alpha1"
+	scheme "github.com/ab-ghosh/knative-otel-integrator/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

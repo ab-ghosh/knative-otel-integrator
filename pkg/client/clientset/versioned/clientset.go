@@ -22,7 +22,7 @@ import (
 	fmt "fmt"
 	http "net/http"
 
-	clusteropsv1alpha1 "github.com/ab-ghosh/knative-controller/pkg/client/clientset/versioned/typed/clusterops/v1alpha1"
+	clusteropsv1alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/client/clientset/versioned/typed/clusterops/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

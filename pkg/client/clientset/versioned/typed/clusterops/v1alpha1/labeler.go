@@ -21,8 +21,8 @@ package v1alpha1
 import (
 	context "context"
 
-	clusteropsv1alpha1 "github.com/ab-ghosh/knative-controller/pkg/apis/clusterops/v1alpha1"
-	scheme "github.com/ab-ghosh/knative-controller/pkg/client/clientset/versioned/scheme"
+	clusteropsv1alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/apis/clusterops/v1alpha1"
+	scheme "github.com/ab-ghosh/knative-otel-integrator/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"

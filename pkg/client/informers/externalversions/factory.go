@@ -23,9 +23,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/ab-ghosh/knative-controller/pkg/client/clientset/versioned"
-	clusterops "github.com/ab-ghosh/knative-controller/pkg/client/informers/externalversions/clusterops"
-	internalinterfaces "github.com/ab-ghosh/knative-controller/pkg/client/informers/externalversions/internalinterfaces"
+	versioned "github.com/ab-ghosh/knative-otel-integrator/pkg/client/clientset/versioned"
+	clusterops "github.com/ab-ghosh/knative-otel-integrator/pkg/client/informers/externalversions/clusterops"
+	internalinterfaces "github.com/ab-ghosh/knative-otel-integrator/pkg/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

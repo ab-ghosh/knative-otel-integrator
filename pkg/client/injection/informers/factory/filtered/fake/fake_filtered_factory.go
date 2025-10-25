@@ -21,9 +21,9 @@ package fakeFilteredFactory
 import (
 	context "context"
 
-	externalversions "github.com/ab-ghosh/knative-controller/pkg/client/informers/externalversions"
-	fake "github.com/ab-ghosh/knative-controller/pkg/client/injection/client/fake"
-	filtered "github.com/ab-ghosh/knative-controller/pkg/client/injection/informers/factory/filtered"
+	externalversions "github.com/ab-ghosh/knative-otel-integrator/pkg/client/informers/externalversions"
+	fake "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/client/fake"
+	filtered "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/informers/factory/filtered"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"

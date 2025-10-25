@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	clusteropsv1alpha1 "github.com/ab-ghosh/knative-controller/pkg/apis/clusterops/v1alpha1"
+	clusteropsv1alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/apis/clusterops/v1alpha1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	listers "k8s.io/client-go/listers"
 	cache "k8s.io/client-go/tools/cache"

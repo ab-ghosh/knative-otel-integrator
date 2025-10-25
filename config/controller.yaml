@@ -19,7 +19,7 @@ spec:
       serviceAccountName: clusterops
       containers:
         - name: controller
-          image: ko://github.com/ab-ghosh/knative-controller/cmd/labeler
+          image: ko://github.com/ab-ghosh/knative-otel-integrator/cmd/labeler
           env:
             - name: SYSTEM_NAMESPACE
               valueFrom:

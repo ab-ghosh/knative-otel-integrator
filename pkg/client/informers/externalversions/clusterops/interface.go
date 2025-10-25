@@ -19,8 +19,8 @@ limitations under the License.
 package clusterops
 
 import (
-	v1alpha1 "github.com/ab-ghosh/knative-controller/pkg/client/informers/externalversions/clusterops/v1alpha1"
-	internalinterfaces "github.com/ab-ghosh/knative-controller/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/client/informers/externalversions/clusterops/v1alpha1"
+	internalinterfaces "github.com/ab-ghosh/knative-otel-integrator/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.

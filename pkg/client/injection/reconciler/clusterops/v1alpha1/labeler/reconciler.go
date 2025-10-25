@@ -23,9 +23,9 @@ import (
 	json "encoding/json"
 	fmt "fmt"
 
-	v1alpha1 "github.com/ab-ghosh/knative-controller/pkg/apis/clusterops/v1alpha1"
-	versioned "github.com/ab-ghosh/knative-controller/pkg/client/clientset/versioned"
-	clusteropsv1alpha1 "github.com/ab-ghosh/knative-controller/pkg/client/listers/clusterops/v1alpha1"
+	v1alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/apis/clusterops/v1alpha1"
+	versioned "github.com/ab-ghosh/knative-otel-integrator/pkg/client/clientset/versioned"
+	clusteropsv1alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/client/listers/clusterops/v1alpha1"
 	zap "go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	errors "k8s.io/apimachinery/pkg/api/errors"

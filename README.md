@@ -270,7 +270,7 @@ Example:
 go build -o bin/labeler ./cmd/labeler
 
 # Build and push container image with ko
-ko publish github.com/ab-ghosh/knative-controller/cmd/labeler
+ko publish github.com/ab-ghosh/knative-otel-integrator/cmd/labeler
 ```
 
 ### Code Generation

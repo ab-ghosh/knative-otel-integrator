@@ -21,8 +21,8 @@ package fake
 import (
 	context "context"
 
-	filtered "github.com/ab-ghosh/knative-controller/pkg/client/injection/informers/clusterops/v1alpha1/labeler/filtered"
-	factoryfiltered "github.com/ab-ghosh/knative-controller/pkg/client/injection/informers/factory/filtered"
+	filtered "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/informers/clusterops/v1alpha1/labeler/filtered"
+	factoryfiltered "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/informers/factory/filtered"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"

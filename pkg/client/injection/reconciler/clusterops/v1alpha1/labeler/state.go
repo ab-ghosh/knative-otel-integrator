@@ -21,7 +21,7 @@ package labeler
 import (
 	fmt "fmt"
 
-	v1alpha1 "github.com/ab-ghosh/knative-controller/pkg/apis/clusterops/v1alpha1"
+	v1alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/apis/clusterops/v1alpha1"
 	types "k8s.io/apimachinery/pkg/types"
 	cache "k8s.io/client-go/tools/cache"
 	reconciler "knative.dev/pkg/reconciler"

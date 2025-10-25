@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	alpha1 "github.com/ab-ghosh/knative-controller/pkg/apis/clusterops/v1alpha1"
-	"github.com/ab-ghosh/knative-controller/pkg/client/informers/externalversions/clusterops/v1alpha1"
+	alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/apis/clusterops/v1alpha1"
+	"github.com/ab-ghosh/knative-otel-integrator/pkg/client/informers/externalversions/clusterops/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"

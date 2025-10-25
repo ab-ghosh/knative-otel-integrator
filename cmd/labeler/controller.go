@@ -8,8 +8,8 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 
-	labelerinformer "github.com/ab-ghosh/knative-controller/pkg/client/injection/informers/clusterops/v1alpha1/labeler"
-	labelerreconciler "github.com/ab-ghosh/knative-controller/pkg/client/injection/reconciler/clusterops/v1alpha1/labeler"
+	labelerinformer "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/informers/clusterops/v1alpha1/labeler"
+	labelerreconciler "github.com/ab-ghosh/knative-otel-integrator/pkg/client/injection/reconciler/clusterops/v1alpha1/labeler"
 	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 )
 
