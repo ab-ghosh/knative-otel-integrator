@@ -66,25 +66,13 @@ kubectl get crd labelers.clusterops.io
 kubectl create namespace labeler
 ```
 
-### 3. Install RBAC Resources and Deploy the Controller
-
-```bash
-kubectl apply -f config/100-serviceaccount.yaml -n labeler
-kubectl apply -f config/200-role.yaml
-kubectl apply -f config/201-rolebinding.yaml
-```
+### 3. Deploy RBAC, Controller, and Example CR
 
 Using `ko`:
 ```bash
-ko resolve -Rf config/ | kubectl apply -n labeler -f -
+ko apply -Rf config/ -- -n labeler
 ```
 
-Or build and push manually:
-```bash
-docker build -t your-registry/labeler-controller:latest .
-docker push your-registry/labeler-controller:latest
-kubectl apply -f config/controller.yaml -n labeler
-```
 
 Verify the controller is running:
 ```bash
@@ -97,28 +85,15 @@ NAME                                READY   STATUS    RESTARTS   AGE
 label-controller-xxxxx-yyyyy        1/1     Running   0          30s
 ```
 
-## Usage
-
-### Create a Labeler Custom Resource
-
-Create a `Labeler` CR to specify which labels to apply:
-
-```yaml
-apiVersion: clusterops.io/v1alpha1
-kind: Labeler
-metadata:
-  name: example-labeler
-  namespace: labeler
-spec:
-  customLabels:
-    environment: "production"
-    team: "platform"
-    managed-by: "labeler-controller"
+Verify the CR is running:
+```bash
+kubectl get labeler -n labeler
 ```
 
-Apply it:
-```bash
-kubectl apply -f config/cr.yaml -n labeler
+Expected output:
+```
+NAME                  AGE
+example-labeler       30s
 ```
 
 ### Verify Labels are Applied
