@@ -1,331 +1,61 @@
-# Prometheus Integration - Production Setup
+# Prometheus Integration - Advanced Reference
 
-This guide explains how to integrate your Knative controller metrics with Prometheus using **Prometheus Operator**.
+> **📖 For complete installation instructions, see the main [README.md](README.md)**
 
-## 📋 Prerequisites
+This document provides advanced configuration options and troubleshooting details for Prometheus integration.
 
-- Prometheus Operator installed in your cluster
-- `kubectl` access to your cluster
+## Quick Reference
 
-### Verify Prometheus Operator
+The controller exposes Prometheus metrics on port 9090. If you've followed the installation guide in the README, your metrics are already being scraped by Prometheus.
 
-```bash
-# Check if Prometheus Operator is installed
-kubectl get crd servicemonitors.monitoring.coreos.com
+### How to View Available Metrics
 
-# Expected output:
-# NAME                                    CREATED AT
-# servicemonitors.monitoring.coreos.com   2024-01-XX...
-```
-
-If you don't see this, follow the installation steps below.
-
----
-
-## 🛠️ Install Prometheus Operator
-
-### 🧭 Option 1: Install via Helm (Recommended)
-
-**Step 1: Add the Helm repository**
+To see all metrics that your controller is currently exposing:
 
 ```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
+# Port-forward to the metrics service
+kubectl port-forward -n labeler svc/label-controller-metrics 9090:9090
+
+# In another terminal, view all metrics
+curl http://localhost:9090/metrics
+
+# Filter for specific metric types
+curl http://localhost:9090/metrics | grep kn_workqueue
+curl http://localhost:9090/metrics | grep kn_k8s_client
+curl http://localhost:9090/metrics | grep go_
 ```
 
-**Step 2: Create a namespace for monitoring**
-
-```bash
-kubectl create namespace monitoring
+**Example output:**
 ```
+# HELP kn_workqueue_depth Current depth of workqueue
+# TYPE kn_workqueue_depth gauge
+kn_workqueue_depth{name="main.Reconciler"} 0
 
-**Step 3: Install kube-prometheus-stack**
-
-This chart includes:
-- Prometheus Operator
-- Prometheus
-- Alertmanager
-- Grafana
-- Default alerting + recording rules
-
-```bash
-helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack -n monitoring
+# HELP kn_workqueue_adds_total Total number of adds handled by workqueue
+# TYPE kn_workqueue_adds_total counter
+kn_workqueue_adds_total{name="main.Reconciler"} 15
 ```
-
-💡 You can also specify a values file:
-
-```bash
-helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack -n monitoring -f values.yaml
-```
-
-**Step 4: Verify installation**
-
-```bash
-kubectl get pods -n monitoring
-```
-
-You should see pods like:
-```
-NAME                                                     READY   STATUS
-alertmanager-kube-prometheus-stack-alertmanager-0        2/2     Running
-kube-prometheus-stack-grafana-xxx                        3/3     Running
-kube-prometheus-stack-kube-state-metrics-xxx             1/1     Running
-kube-prometheus-stack-operator-xxx                       1/1     Running
-kube-prometheus-stack-prometheus-node-exporter-xxx       1/1     Running
-prometheus-kube-prometheus-stack-prometheus-0            2/2     Running
-```
-
-**Step 5: Wait for Prometheus to be ready**
-
-```bash
-kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
-```
-
----
-
-## 🚀 Setup (3 Steps)
-
-### Step 1: Deploy Your Controller with Metrics
-
-```bash
-# Deploy everything including metrics configuration
-ko apply -Rf config/ -n labeler
-```
-
-This deploys:
-- Controller with metrics port (9090)
-- `config-observability` ConfigMap
-- `label-controller-metrics` Service
-- **`servicemonitor.yaml`** ← Tells Prometheus to scrape
-
-### Step 2: Verify ServiceMonitor
-
-```bash
-# Check ServiceMonitor was created
-kubectl get servicemonitor -n labeler
-
-# Expected output:
-# NAME                 AGE
-# labeler-controller   30s
-
-# View details
-kubectl describe servicemonitor labeler-controller -n labeler
-```
-
-### Step 3: Verify Prometheus is Scraping
-
-```bash
-# Port-forward to Prometheus UI
-kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090
-
-# Open in browser
-open http://localhost:9090
-
-# Go to: Status → Targets
-# Look for: labeler/labeler-controller
-# Status should be: UP (green)
-```
-
----
-
-## 📊 Using the Metrics
 
 ### Access Prometheus
 
 ```bash
-# Port-forward to Prometheus
 kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090
-
-# Open UI
 open http://localhost:9090
 ```
 
-### Try These Queries
+### Verify Scraping
 
-Go to **Graph** tab and enter:
-
-**Current queue depth:**
-```promql
-kn_workqueue_depth{name="main.Reconciler"}
-```
-
-**Items processed per second (5min average):**
-```promql
-rate(kn_workqueue_adds_total{name="main.Reconciler"}[5m])
-```
-
-**95th percentile processing time:**
-```promql
-histogram_quantile(0.95, 
-  rate(kn_workqueue_process_duration_seconds_bucket{name="main.Reconciler"}[5m])
-)
-```
-
-**Memory usage (MB):**
-```promql
-go_memory_used_bytes / 1024 / 1024
-```
-
-**Active goroutines:**
-```promql
-go_goroutine_count
-```
-
-**K8s API requests by method:**
-```promql
-sum by (http_request_method) (
-  rate(kn_k8s_client_http_response_status_code_total[5m])
-)
-```
+1. Go to: **Status → Targets**
+2. Look for: `labeler/labeler-controller`
+3. Status should be: **UP** (green)
 
 ---
 
-## 🎨 Grafana Dashboard (Optional)
-
-### Add Prometheus Data Source
-
-1. Go to: **Configuration → Data Sources → Add data source**
-2. Select: **Prometheus**
-3. URL: `http://prometheus-operated.monitoring.svc.cluster.local:9090`
-4. Click: **Save & Test**
-
-### Create Dashboard Panels
-
-**Panel 1: Queue Depth (Graph)**
-```promql
-kn_workqueue_depth{name="main.Reconciler"}
-```
-
-**Panel 2: Processing Rate (Graph)**
-```promql
-rate(kn_workqueue_adds_total{name="main.Reconciler"}[5m])
-```
-
-**Panel 3: Processing Duration p95 (Graph)**
-```promql
-histogram_quantile(0.95, 
-  rate(kn_workqueue_process_duration_seconds_bucket{name="main.Reconciler"}[5m])
-)
-```
-
-**Panel 4: Memory Usage (Graph)**
-```promql
-go_memory_used_bytes / 1024 / 1024
-```
-
-**Panel 5: Goroutines (Stat)**
-```promql
-go_goroutine_count
-```
-
----
-
-## ⚠️ Troubleshooting
-
-### ServiceMonitor not discovered by Prometheus
-
-**Problem**: Metrics queries return no data even though the ServiceMonitor exists.
-
-**Cause**: Prometheus uses a label selector to discover ServiceMonitors. If your ServiceMonitor doesn't have the required label, Prometheus will ignore it.
-
-**Solution**: Add the `release: kube-prometheus-stack` label to your ServiceMonitor:
-
-```yaml
-metadata:
-  name: labeler-controller
-  namespace: labeler
-  labels:
-    app: label-controller
-    release: kube-prometheus-stack  # ← Required!
-```
-
-**Verify the required label:**
-
-```bash
-# Check what label selector Prometheus is using
-kubectl get prometheus -n monitoring -o jsonpath='{.items[0].spec.serviceMonitorSelector}'
-
-# Common selectors:
-# {"matchLabels":{"release":"kube-prometheus-stack"}}
-```
-
-**After adding the label:**
-
-```bash
-# Apply the updated ServiceMonitor
-kubectl apply -f config/servicemonitor.yaml
-
-# Wait 30 seconds for Prometheus to reload
-sleep 30
-
-# Verify Prometheus discovered it
-kubectl logs -n monitoring prometheus-kube-prometheus-stack-prometheus-0 -c prometheus | grep labeler
-```
-
-### ServiceMonitor not found
-
-```bash
-# Check if CRD exists
-kubectl get crd servicemonitors.monitoring.coreos.com
-
-# If missing, install Prometheus Operator:
-# https://github.com/prometheus-operator/prometheus-operator#quickstart
-```
-
-### Target shows DOWN in Prometheus
-
-```bash
-# 1. Check if Service exists
-kubectl get svc label-controller-metrics -n labeler
-
-# 2. Check if pod is running
-kubectl get pods -n labeler -l app=label-controller
-
-# 3. Test metrics endpoint directly
-kubectl port-forward -n labeler svc/label-controller-metrics 9090:9090
-curl http://localhost:9090/metrics
-
-# 4. Check ServiceMonitor matches Service
-kubectl get svc label-controller-metrics -n labeler -o yaml | grep -A5 labels
-kubectl get servicemonitor labeler-controller -n labeler -o yaml | grep -A5 selector
-```
-
-### No metrics appearing
-
-```bash
-# 1. Verify config-observability is correct
-kubectl get cm config-observability -n labeler -o yaml
-
-# Should have:
-#   metrics-protocol: prometheus
-#   metrics-endpoint: ":9090"
-
-# 2. Check controller logs
-kubectl logs -n labeler -l app=label-controller | grep -i observability
-
-# 3. Restart controller if needed
-kubectl rollout restart deployment/label-controller -n labeler
-```
-
-### Wrong namespace for Prometheus
-
-If your Prometheus is in a different namespace:
-
-```bash
-# Find Prometheus namespace
-kubectl get prometheus --all-namespaces
-
-# Update port-forward command
-kubectl port-forward -n YOUR_PROMETHEUS_NAMESPACE svc/prometheus-operated 9090:9090
-```
-
----
-
-## 🔧 Configuration
+## Advanced Configuration
 
 ### ServiceMonitor Configuration
 
-The `config/servicemonitor.yaml` file:
+The `config/servicemonitor.yaml` file tells Prometheus where to scrape metrics:
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
@@ -365,7 +95,7 @@ Then apply:
 kubectl apply -f config/servicemonitor.yaml
 ```
 
-### Add Custom Labels
+### Add Custom Labels to Metrics
 
 Edit `config/servicemonitor.yaml`:
 
@@ -383,11 +113,216 @@ spec:
 
 ---
 
-## 📈 Monitoring Best Practices
+## Troubleshooting
 
-### Set Up Alerts
+### ServiceMonitor not discovered by Prometheus
 
-Create a PrometheusRule for alerts:
+**Problem**: Metrics queries return no data even though the ServiceMonitor exists.
+
+**Solution**: Ensure your ServiceMonitor has the correct label. Check what label Prometheus expects:
+
+```bash
+kubectl get prometheus -n monitoring -o jsonpath='{.items[0].spec.serviceMonitorSelector}'
+```
+
+If it returns `{"matchLabels":{"release":"kube-prometheus-stack"}}`, ensure your ServiceMonitor has `release: kube-prometheus-stack` label (already included in `config/servicemonitor.yaml`).
+
+### Target shows DOWN in Prometheus
+
+```bash
+# 1. Check if Service exists
+kubectl get svc label-controller-metrics -n labeler
+
+# 2. Check if pod is running
+kubectl get pods -n labeler -l app=label-controller
+
+# 3. Test metrics endpoint directly
+kubectl port-forward -n labeler svc/label-controller-metrics 9090:9090
+curl http://localhost:9090/metrics
+
+# 4. Check ServiceMonitor matches Service labels
+kubectl get svc label-controller-metrics -n labeler -o yaml | grep -A5 labels
+kubectl get servicemonitor labeler-controller -n labeler -o yaml | grep -A5 selector
+```
+
+### No metrics appearing in Prometheus
+
+```bash
+# Verify config-observability ConfigMap
+kubectl get cm config-observability -n labeler -o yaml
+
+# Should contain:
+#   metrics-protocol: prometheus
+#   metrics-endpoint: ":9090"
+
+# Check controller logs
+kubectl logs -n labeler -l app=label-controller | grep -i observability
+
+# Restart controller if needed
+kubectl rollout restart deployment/label-controller -n labeler
+```
+
+### Different Prometheus namespace
+
+If your Prometheus is in a different namespace:
+
+```bash
+# Find Prometheus namespace
+kubectl get prometheus --all-namespaces
+
+# Update port-forward commands accordingly
+kubectl port-forward -n YOUR_NAMESPACE svc/prometheus-operated 9090:9090
+```
+
+---
+
+## Prometheus Query Examples
+
+Access Prometheus UI:
+```bash
+kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090
+open http://localhost:9090
+```
+
+### Workqueue Queries
+
+**Current queue depth:**
+```promql
+kn_workqueue_depth{name="main.Reconciler"}
+```
+
+**Items processed per second (5min average):**
+```promql
+rate(kn_workqueue_adds_total{name="main.Reconciler"}[5m])
+```
+
+**95th percentile processing time:**
+```promql
+histogram_quantile(0.95, 
+  rate(kn_workqueue_process_duration_seconds_bucket{name="main.Reconciler"}[5m])
+)
+```
+
+**Queue duration p99:**
+```promql
+histogram_quantile(0.99, 
+  rate(kn_workqueue_queue_duration_seconds_bucket{name="main.Reconciler"}[5m])
+)
+```
+
+**Total retries:**
+```promql
+kn_workqueue_retries_total{name="main.Reconciler"}
+```
+
+### Go Runtime Queries
+
+**Memory usage (MB):**
+```promql
+go_memory_used_bytes / 1024 / 1024
+```
+
+**Active goroutines:**
+```promql
+go_goroutine_count
+```
+
+**Heap allocations:**
+```promql
+go_memory_allocated_bytes
+```
+
+### Kubernetes Client Queries
+
+**K8s API requests by method:**
+```promql
+sum by (http_request_method) (
+  rate(kn_k8s_client_http_response_status_code_total[5m])
+)
+```
+
+**K8s API latency p95:**
+```promql
+histogram_quantile(0.95,
+  rate(kn_k8s_client_http_request_duration_seconds_bucket[5m])
+)
+```
+
+**K8s API errors:**
+```promql
+sum(rate(kn_k8s_client_http_response_status_code_total{code=~"5.."}[5m]))
+```
+
+---
+
+## Grafana Dashboard Setup
+
+If you installed kube-prometheus-stack, Grafana is available:
+
+```bash
+# Get Grafana admin password
+kubectl get secret -n monitoring kube-prometheus-stack-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+
+# Port-forward to Grafana
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+
+# Open Grafana (username: admin, password from above command)
+open http://localhost:3000
+```
+
+### Add Prometheus Data Source
+
+1. Go to: **Configuration → Data Sources → Add data source**
+2. Select: **Prometheus**
+3. URL: `http://prometheus-operated.monitoring.svc.cluster.local:9090`
+4. Click: **Save & Test**
+
+### Dashboard Panel Examples
+
+**Panel 1: Queue Depth (Time Series)**
+```promql
+kn_workqueue_depth{name="main.Reconciler"}
+```
+
+**Panel 2: Processing Rate (Time Series)**
+```promql
+rate(kn_workqueue_adds_total{name="main.Reconciler"}[5m])
+```
+
+**Panel 3: Processing Latency Percentiles (Time Series)**
+```promql
+# p50
+histogram_quantile(0.50, rate(kn_workqueue_process_duration_seconds_bucket{name="main.Reconciler"}[5m]))
+# p95
+histogram_quantile(0.95, rate(kn_workqueue_process_duration_seconds_bucket{name="main.Reconciler"}[5m]))
+# p99
+histogram_quantile(0.99, rate(kn_workqueue_process_duration_seconds_bucket{name="main.Reconciler"}[5m]))
+```
+
+**Panel 4: Memory Usage (Time Series)**
+```promql
+go_memory_used_bytes / 1024 / 1024
+```
+
+**Panel 5: Goroutines (Stat/Gauge)**
+```promql
+go_goroutine_count
+```
+
+**Panel 6: K8s API Request Rate (Time Series)**
+```promql
+sum by (http_request_method) (
+  rate(kn_k8s_client_http_response_status_code_total[5m])
+)
+```
+
+---
+
+## Alerting Configuration
+
+### Create PrometheusRule
+
+Create alerts for production monitoring:
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
@@ -395,100 +330,174 @@ kind: PrometheusRule
 metadata:
   name: labeler-alerts
   namespace: labeler
+  labels:
+    app: label-controller
+    release: kube-prometheus-stack  # Required for discovery
 spec:
   groups:
-  - name: labeler
+  - name: labeler-controller
     interval: 30s
     rules:
-    - alert: HighQueueDepth
+    # Alert when queue depth is high
+    - alert: LabelerHighQueueDepth
       expr: kn_workqueue_depth{name="main.Reconciler"} > 100
       for: 5m
       labels:
         severity: warning
+        component: labeler-controller
       annotations:
-        summary: "High work queue depth"
-        description: "Queue depth is {{ $value }} items"
+        summary: "Labeler controller queue depth is high"
+        description: "Queue depth is {{ $value }} items (threshold: 100)"
     
-    - alert: HighProcessingLatency
+    # Alert when processing latency is high
+    - alert: LabelerHighProcessingLatency
       expr: |
         histogram_quantile(0.95, 
-          rate(kn_workqueue_process_duration_seconds_bucket[5m])
+          rate(kn_workqueue_process_duration_seconds_bucket{name="main.Reconciler"}[5m])
         ) > 1
       for: 10m
       labels:
         severity: warning
+        component: labeler-controller
       annotations:
-        summary: "High processing latency"
-        description: "95th percentile is {{ $value }}s"
+        summary: "Labeler controller processing latency is high"
+        description: "95th percentile processing time is {{ $value }}s (threshold: 1s)"
+    
+    # Alert when controller has high retry rate
+    - alert: LabelerHighRetryRate
+      expr: rate(kn_workqueue_retries_total{name="main.Reconciler"}[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+        component: labeler-controller
+      annotations:
+        summary: "Labeler controller has high retry rate"
+        description: "Retry rate is {{ $value }} retries/sec (threshold: 0.1/sec)"
+    
+    # Alert when memory usage is high
+    - alert: LabelerHighMemoryUsage
+      expr: go_memory_used_bytes / 1024 / 1024 > 512
+      for: 10m
+      labels:
+        severity: warning
+        component: labeler-controller
+      annotations:
+        summary: "Labeler controller memory usage is high"
+        description: "Memory usage is {{ $value }}MB (threshold: 512MB)"
 ```
 
 Apply:
 ```bash
-kubectl apply -f alerts.yaml
+kubectl apply -f labeler-alerts.yaml
 ```
 
-### Create Dashboards
-
-Import or create Grafana dashboards with:
-- Queue depth over time
-- Processing rate trends
-- Latency percentiles (p50, p95, p99)
-- Memory usage trends
-- K8s API call rates
+Verify alerts are loaded:
+```bash
+kubectl get prometheusrule -n labeler
+```
 
 ---
 
-## 📚 Available Metrics
+## Available Metrics Reference
 
 ### Workqueue Metrics (7 metrics)
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `kn.workqueue.depth` | Gauge | Current queue depth |
-| `kn.workqueue.adds` | Counter | Total items added |
-| `kn.workqueue.queue.duration` | Histogram | Time waiting in queue |
-| `kn.workqueue.process.duration` | Histogram | Processing time |
-| `kn.workqueue.unfinished_work` | Gauge | Unfinished work duration |
-| `kn.workqueue.longest_running_processor` | Gauge | Longest running item |
-| `kn.workqueue.retries` | Counter | Retry count |
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `kn_workqueue_depth` | Gauge | `name` | Current number of items in the work queue |
+| `kn_workqueue_adds_total` | Counter | `name` | Total number of items added to the queue |
+| `kn_workqueue_queue_duration_seconds` | Histogram | `name` | Time items spend waiting in queue before processing |
+| `kn_workqueue_process_duration_seconds` | Histogram | `name` | Time spent processing items |
+| `kn_workqueue_unfinished_work_seconds` | Gauge | `name` | How long unfinished work has been in progress |
+| `kn_workqueue_longest_running_processor_seconds` | Gauge | `name` | Duration of the longest running processor |
+| `kn_workqueue_retries_total` | Counter | `name` | Total number of retries |
 
-### Client-Go Metrics (2 metrics)
+### Kubernetes Client Metrics (2 metrics)
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `kn.k8s.client.request.duration` | Histogram | K8s API request latency |
-| `kn.k8s.client.request.count` | Counter | K8s API request count |
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `kn_k8s_client_http_request_duration_seconds` | Histogram | `host`, `http_request_method` | K8s API request latency |
+| `kn_k8s_client_http_response_status_code_total` | Counter | `host`, `http_request_method`, `code` | K8s API request count by status code |
 
 ### Go Runtime Metrics (10+ metrics)
 
 | Metric | Description |
 |--------|-------------|
-| `go.memory.used` | Memory used |
-| `go.goroutine.count` | Goroutine count |
-| `go.memory.allocated` | Heap allocations |
-| And more... |
+| `go_memory_used_bytes` | Total memory used |
+| `go_goroutine_count` | Number of active goroutines |
+| `go_memory_allocated_bytes` | Total bytes allocated on the heap |
+| `go_gc_duration_seconds` | GC pause duration |
+| `go_threads` | Number of OS threads |
+| And more standard Go runtime metrics... |
 
 ---
 
-## ✅ Verification Checklist
+## Best Practices
 
-- [ ] Prometheus Operator installed
-- [ ] ServiceMonitor created (`kubectl get servicemonitor -n labeler`)
-- [ ] Target shows UP in Prometheus UI
-- [ ] Queries return data
-- [ ] Grafana dashboard created (optional)
-- [ ] Alerts configured (optional)
+### 1. Set Up Alerts
+
+Always configure alerts for:
+- High queue depth (indicates controller is falling behind)
+- High processing latency (indicates performance issues)
+- High retry rate (indicates reconciliation failures)
+- High memory usage (indicates potential memory leaks)
+
+### 2. Create Dashboards
+
+Build Grafana dashboards to visualize:
+- Queue depth trends over time
+- Processing rate and latency
+- Memory and CPU usage
+- K8s API call patterns
+
+### 3. Monitor Resource Usage
+
+Track Go runtime metrics:
+- Memory usage trends
+- Goroutine count (should be stable)
+- GC frequency and duration
+
+### 4. Set Appropriate Scrape Intervals
+
+Balance between data granularity and storage:
+- 15-30s for production environments
+- 5-10s for debugging/troubleshooting
+- 1m for long-term storage
+
+### 5. Configure Recording Rules
+
+Pre-compute expensive queries:
+
+```yaml
+spec:
+  groups:
+  - name: labeler-recording-rules
+    interval: 30s
+    rules:
+    - record: labeler:queue_processing_rate:5m
+      expr: rate(kn_workqueue_adds_total{name="main.Reconciler"}[5m])
+    
+    - record: labeler:processing_latency:p95:5m
+      expr: |
+        histogram_quantile(0.95,
+          rate(kn_workqueue_process_duration_seconds_bucket{name="main.Reconciler"}[5m])
+        )
+```
 
 ---
 
-## 🎉 Done!
+## Additional Resources
 
-Your metrics are now being scraped by Prometheus!
+- [Prometheus Operator Documentation](https://prometheus-operator.dev/)
+- [Prometheus Query Language (PromQL)](https://prometheus.io/docs/prometheus/latest/querying/basics/)
+- [Grafana Dashboards](https://grafana.com/docs/grafana/latest/dashboards/)
+- [Knative Metrics](https://knative.dev/docs/serving/observability/metrics/)
 
-**Next steps:**
-1. Create Grafana dashboards
-2. Set up alerting rules
-3. Monitor your controller in production
+---
 
-**Need help?** Check the troubleshooting section above.
+## Need Help?
+
+For installation issues, see the main [README.md](README.md).
+
+For advanced troubleshooting, check the sections above or open an issue on GitHub.
 
