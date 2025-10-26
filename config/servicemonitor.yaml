@@ -1,0 +1,19 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: labeler-controller
+  namespace: labeler
+  labels:
+    app: label-controller
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: label-controller
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+
