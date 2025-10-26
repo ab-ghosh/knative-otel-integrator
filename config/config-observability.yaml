@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-observability
+  namespace: labeler
+data:
+  # Enable Prometheus metrics on port 9090
+  metrics-protocol: prometheus
+  metrics-endpoint: ":9090"
+
