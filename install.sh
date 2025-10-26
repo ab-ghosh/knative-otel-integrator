@@ -175,7 +175,7 @@ print_success "Namespace 'labeler' ready"
 print_header "Step 4: Deploying Controller"
 
 print_step "Deploying RBAC, Controller, Services, and Example CR..."
-ko apply -Rf config/ -n labeler
+ko apply -Rf config/ -- -n labeler
 
 print_success "All resources deployed"
 echo ""
