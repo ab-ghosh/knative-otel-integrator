@@ -779,6 +779,246 @@ kubectl rollout restart deployment/label-controller -n labeler
 
 ---
 
+## Custom Metrics
+
+The controller includes a custom metric that tracks CR reconciliations. You can add your own custom metrics following the same pattern.
+
+### Available Custom Metrics
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `labeler_cr_reconcile_count_total` | Counter | Total number of Labeler CR reconciliations (create/update) |
+
+### How Custom Metrics Flow Through the System
+
+This diagram shows the complete journey of a custom metric from creation to Prometheus:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ 1. APPLICATION STARTUP (main.go)                                 │
+│    sharedmain.Main("custom-labeler", NewController)              │
+│                             ↓                                     │
+│ 2. SHAREDMAIN SETUP (vendor/knative.dev/pkg/...)                │
+│    Line 286: SetupObservabilityOrDie()                          │
+│         ├─ Line 393: Gets config-observability ConfigMap         │
+│         ├─ Line 402: Creates MeterProvider                       │
+│         ├─ Line 412: otel.SetMeterProvider(meterProvider) ← GLOBAL│
+│         └─ Starts Prometheus exporter on :9090                   │
+│                             ↓                                     │
+│ 3. YOUR CONTROLLER INIT (controller.go)                          │
+│    Line 26: meter = otel.Meter("labeler-controller")            │
+│         └─ Gets the GLOBAL MeterProvider set above               │
+│    Line 27-30: Creates counter metric                            │
+│                             ↓                                     │
+│ 4. RECONCILIATION (reconciler.go)                                │
+│    Line 36: crReconcileCounter.Add(ctx, 1)                      │
+│         └─ Increments counter with attributes                    │
+│                             ↓                                     │
+│ 5. OPENTELEMETRY SDK (automatic)                                 │
+│    - Collects all metric values                                  │
+│    - Applies naming conventions                                  │
+│    - Adds otel_scope_* attributes                                │
+│                             ↓                                     │
+│ 6. PROMETHEUS EXPORTER (automatic)                               │
+│    - Converts OTel metrics to Prometheus format                  │
+│    - Adds "_total" suffix to counters                            │
+│    - Serves on http://localhost:9090/metrics                     │
+│                             ↓                                     │
+│ 7. YOUR CURL COMMAND                                             │
+│    curl http://localhost:9090/metrics                            │
+│         └─ Returns: labeler_cr_reconcile_count_total{...} 1     │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Key Points:**
+- ✅ **No manual setup needed** - Knative's `sharedmain` handles all OpenTelemetry configuration
+- ✅ **Global MeterProvider** - Set once at startup, used by all metrics
+- ✅ **Automatic export** - Prometheus exporter runs automatically on port 9090
+- ✅ **ConfigMap driven** - All configuration comes from `config-observability` ConfigMap
+
+### Testing Custom Metrics
+
+#### Step 1: Deploy the Controller with Prometheus
+
+```bash
+./install.sh --with-prometheus
+```
+
+This installs:
+- The Labeler controller with metrics enabled
+- Prometheus Operator (kube-prometheus-stack)
+- ServiceMonitor for automatic metrics discovery
+
+#### Step 2: Verify Metrics Endpoint
+
+Port-forward to the controller's metrics service:
+
+```bash
+kubectl port-forward -n labeler svc/label-controller-metrics 9090:9090
+```
+
+#### Step 3: Check Custom Metric
+
+In another terminal, query the custom metric:
+
+```bash
+curl -s http://localhost:9090/metrics | grep -A 2 "labeler_cr_reconcile_count"
+```
+
+Expected output:
+```prometheus
+# HELP labeler_cr_reconcile_count_total Total number of Labeler CR reconciliations (create/update)
+# TYPE labeler_cr_reconcile_count_total counter
+labeler_cr_reconcile_count_total{name="example-labeler",namespace="labeler",otel_scope_name="labeler-controller"} 1
+```
+
+#### Step 4: Trigger Metric Updates
+
+Trigger reconciliations to see the counter increment:
+
+```bash
+# Update the CR to trigger reconciliation
+kubectl annotate labeler example-labeler test-trigger=run-$(date +%s) -n labeler --overwrite
+
+# Check the metric again - count should increase
+curl -s http://localhost:9090/metrics | grep "labeler_cr_reconcile_count_total"
+```
+
+#### Step 5: View in Prometheus UI
+
+Port-forward to Prometheus (note: different port to avoid conflict):
+
+```bash
+kubectl port-forward -n monitoring svc/prometheus-operated 9091:9090
+```
+
+Open Prometheus UI:
+```bash
+open http://localhost:9091
+```
+
+Run queries in the Prometheus UI:
+
+**Basic query:**
+```promql
+labeler_cr_reconcile_count_total
+```
+
+**Query by namespace:**
+```promql
+labeler_cr_reconcile_count_total{namespace="labeler"}
+```
+
+**Rate of reconciliations (per second over 5 minutes):**
+```promql
+rate(labeler_cr_reconcile_count_total[5m])
+```
+
+**Total reconciliations across all CRs:**
+```promql
+sum(labeler_cr_reconcile_count_total)
+```
+
+### Adding Your Own Custom Metrics
+
+To add custom metrics to your controller:
+
+**1. Import OpenTelemetry packages** (`controller.go`):
+```go
+import (
+    "go.opentelemetry.io/otel"
+    "go.opentelemetry.io/otel/metric"
+)
+```
+
+**2. Create the metric** (`controller.go`):
+```go
+// Get the global meter
+meter := otel.Meter("labeler-controller")
+
+// Create a counter
+myCounter, err := meter.Int64Counter(
+    "my.custom.metric",
+    metric.WithDescription("Description of what this metric tracks"),
+    metric.WithUnit("{units}"),
+)
+if err != nil {
+    logger.Warnw("Failed to create custom metric", "error", err)
+}
+
+// Add to reconciler struct
+reconciler := &Reconciler{
+    // ... other fields
+    myCounter: myCounter,
+}
+```
+
+**3. Record metric values** (`reconciler.go`):
+```go
+func (r *Reconciler) ReconcileKind(ctx context.Context, labeler *alpha1.Labeler) reconciler.Event {
+    // Record the metric
+    if r.myCounter != nil {
+        r.myCounter.Add(ctx, 1,
+            metric.WithAttributes(
+                attribute.String("key", "value"),
+            ),
+        )
+    }
+    
+    // ... rest of reconciliation logic
+}
+```
+
+**4. Deploy and verify**:
+```bash
+ko apply -Rf config/ -n labeler
+kubectl port-forward -n labeler svc/label-controller-metrics 9090:9090
+curl http://localhost:9090/metrics | grep my_custom_metric
+```
+
+### Metric Types
+
+OpenTelemetry supports different metric types:
+
+| Type | Use Case | Example |
+|------|----------|---------|
+| `Int64Counter` | Monotonically increasing values | Request count, errors |
+| `Float64Counter` | Monotonically increasing decimal values | Total bytes processed |
+| `Int64UpDownCounter` | Values that go up and down (gauges) | Active connections, queue size |
+| `Float64UpDownCounter` | Gauge with decimal values | Temperature, load average |
+| `Int64Histogram` | Distribution of values | Request latency, payload size |
+| `Float64Histogram` | Distribution of decimal values | Response time in seconds |
+
+### Example: Tracking Deployment Count
+
+Add a metric to track how many deployments are labeled:
+
+```go
+// In controller.go - create the metric
+deploymentsLabeled, _ := meter.Int64Counter(
+    "labeler.deployments.labeled",
+    metric.WithDescription("Total number of deployments labeled"),
+    metric.WithUnit("{deployments}"),
+)
+
+// In reconciler.go - record the metric
+labeledCount := 0
+for _, deployment := range deployments {
+    _, err := r.kubeclient.AppsV1().Deployments(deployment.Namespace).Patch(...)
+    if err == nil {
+        labeledCount++
+    }
+}
+
+r.deploymentsLabeled.Add(ctx, int64(labeledCount),
+    metric.WithAttributes(
+        attribute.String("namespace", labeler.Namespace),
+    ),
+)
+```
+
+---
+
 ## Examples
 
 ### Example 1: Environment Labels

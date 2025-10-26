@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -20,10 +22,22 @@ func NewController(ctx context.Context, watcher configmap.Watcher) *controller.I
 
 	logger.Infof("Setting up event handlers: ")
 
+	// Initialize custom metrics
+	meter := otel.Meter("labeler-controller")
+	crReconcileCounter, err := meter.Int64Counter(
+		"labeler.cr.reconcile.count",
+		metric.WithDescription("Total number of Labeler CR reconciliations (create/update)"),
+		metric.WithUnit("{reconciliations}"),
+	)
+	if err != nil {
+		logger.Warnw("Failed to create custom metric", "error", err)
+	}
+
 	reconciler := &Reconciler{
 		labelerInformer:    labelerInformer,
 		deploymentInformer: deploymentInformer,
 		kubeclient:         kubeclient.Get(ctx),
+		crReconcileCounter: crReconcileCounter,
 	}
 
 	impl := labelerreconciler.NewImpl(ctx, reconciler, func(impl *controller.Impl) controller.Options {
