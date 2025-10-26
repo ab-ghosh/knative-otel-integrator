@@ -6,6 +6,8 @@ import (
 
 	alpha1 "github.com/ab-ghosh/knative-otel-integrator/pkg/apis/clusterops/v1alpha1"
 	"github.com/ab-ghosh/knative-otel-integrator/pkg/client/informers/externalversions/clusterops/v1alpha1"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,11 +21,24 @@ type Reconciler struct {
 	labelerInformer    v1alpha1.LabelerInformer
 	deploymentInformer v1.DeploymentInformer
 	kubeclient         kubernetes.Interface
+
+	// Custom metrics
+	crReconcileCounter metric.Int64Counter
 }
 
-func (r Reconciler) ReconcileKind(ctx context.Context, labeler *alpha1.Labeler) reconciler.Event {
+func (r *Reconciler) ReconcileKind(ctx context.Context, labeler *alpha1.Labeler) reconciler.Event {
 	logger := logging.FromContext(ctx)
 	logger.Infof("Reconciling Labeler : %s", labeler.Name)
+
+	// Record CR reconciliation event (create or update)
+	if r.crReconcileCounter != nil {
+		r.crReconcileCounter.Add(ctx, 1,
+			metric.WithAttributes(
+				attribute.String("name", labeler.Name),
+				attribute.String("namespace", labeler.Namespace),
+			),
+		)
+	}
 
 	// Get List of Deployments in the same namespace as the Labeler
 	deployments, err := r.deploymentInformer.Lister().List(labels.Everything())
