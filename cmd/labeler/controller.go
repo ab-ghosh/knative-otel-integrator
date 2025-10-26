@@ -32,5 +32,8 @@ func NewController(ctx context.Context, watcher configmap.Watcher) *controller.I
 		}
 	})
 
+	// Set up event handlers for Labeler resources
+	labelerInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+
 	return impl
 }
